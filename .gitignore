@@ -1,0 +1,12 @@
+.DS_Store
+claude-logs
+.claude/
+.env
+__pycache__/
+*.egg-info/
+vault/
+chroma_db/
+token.json
+credentials.json
+node_modules/
+.expo/
