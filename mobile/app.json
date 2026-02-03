@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "ATLAS",
+    "slug": "atlas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D1117"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D1117"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.timelabs.atlas",
+      "usesCleartextTraffic": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2ec1b571-d8c7-4b82-9150-84e23e83901f"
+      }
+    },
+    "owner": "timelabs",
+    "plugins": [
+      "expo-font",
+      "./plugins/withCleartextTraffic",
+      "expo-secure-store"
+    ]
+  }
+}
