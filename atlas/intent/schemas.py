@@ -19,6 +19,11 @@ class IntentType(str, Enum):
     SHOPPING_ADD = "shopping_add"
     SHOPPING_LIST = "shopping_list"
     SHOPPING_COMPLETE = "shopping_complete"
+    # Vault operations
+    SEARCH_VAULT = "search_vault"
+    DAILY_SUMMARY = "daily_summary"
+    VOICE_CAPTURE = "voice_capture"
+    FIND_CONNECTIONS = "find_connections"
     CHAT = "chat"
 
 

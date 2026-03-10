@@ -7,7 +7,7 @@
 | **Nome** | ATLAS (Assistente Pessoal Inteligente) |
 | **Stack** | Python 3.12+ / FastAPI / GPT-4o-mini / ChromaDB / React Native (Expo) |
 | **Equipe** | Solo developer |
-| **Fase** | MVP (Fase 1) — em desenvolvimento |
+| **Fase** | Fase 1.5 — concluída (Fase 2 em desenvolvimento) |
 | **Deploy alvo** | Oracle Cloud VPS |
 | **Repo** | https://github.com/enzoofs/personal-assistant |
 
@@ -20,6 +20,8 @@
   - [ADR-003: ChromaDB como índice reconstruível](adr/003-chromadb-reconstructible-index.md)
   - [ADR-004: GPT-4o-mini como LLM principal](adr/004-gpt4o-mini.md)
   - [ADR-005: Oracle Cloud VPS para deploy](adr/005-oracle-cloud-deploy.md)
+  - [ADR-006: Sistema de Fallbacks Gratuitos](adr/006-free-fallbacks.md)
+  - [ADR-007: Antecipação de Streaming SSE](adr/007-streaming-antecipado.md)
 
 ## Camada 2: Arquivos de Contexto Otimizados para IA
 

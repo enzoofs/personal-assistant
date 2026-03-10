@@ -26,6 +26,7 @@ ATLAS é um assistente pessoal inteligente com personalidade sarcástica (estilo
 
 | Fase | Escopo | Status |
 |---|---|---|
-| MVP (Fase 1) | Texto + Obsidian + Google Calendar + Pesquisa + Hábitos | Em desenvolvimento |
-| Fase 2 | Áudio bidirecional + App Android + Padrões + Notificações | Planejado |
+| MVP (Fase 1) | Texto + Obsidian + Google Calendar + Pesquisa + Habitos | Concluido |
+| Fase 1.5 | Audio bidirecional + Shopping List + Email + Voice Capture + Streaming | Concluido |
+| Fase 2 | App Android polido + Dashboard + Padroes + Notificacoes proativas | Em desenvolvimento |
 | Fase 3 | Telegram + APIs externas + Wearables | Futuro |

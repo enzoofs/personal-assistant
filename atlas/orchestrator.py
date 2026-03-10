@@ -10,11 +10,14 @@ from atlas.memory.extractor import extract_memories
 from atlas.memory.retriever import retrieve_relevant_memories
 from atlas.vault.knowledge_extractor import extract_knowledge
 from atlas.persona.atlas import generate_response, generate_response_stream
+from atlas.vault.semantic_search import get_context_for_query
+from atlas.memory.context import remember_from_conversation
 
 logger = logging.getLogger(__name__)
 
 _tool_registry: dict = {}
 _MEMORY_EXTRACTION_INTERVAL = 5
+_FACT_EXTRACTION_INTERVAL = 3  # Extract facts more frequently
 
 
 def register_tool(intent: IntentType, handler):
@@ -25,10 +28,14 @@ async def process(message: str, session_id: str = "default") -> tuple[str, str, 
     """Processa uma mensagem do usuário com contexto conversacional."""
     history = get_history(session_id=session_id)
 
-    # Run classification and memory retrieval in parallel for speed
+    # Run classification, memory retrieval, and vault context in parallel for speed
     intent_task = classify_intent(message, history=history)
     memories_task = retrieve_relevant_memories(message, k=5)
-    intent_result, memories = await asyncio.gather(intent_task, memories_task)
+    vault_context_task = get_context_for_query(message)
+
+    intent_result, memories, vault_context = await asyncio.gather(
+        intent_task, memories_task, vault_context_task
+    )
     logger.info("Intent: %s (confidence: %.2f)", intent_result.intent.value, intent_result.confidence)
 
     tool_context = None
@@ -44,7 +51,8 @@ async def process(message: str, session_id: str = "default") -> tuple[str, str, 
             error = str(e)
 
     response = await generate_response(
-        message, intent_result, tool_context, history=history, memories=memories,
+        message, intent_result, tool_context,
+        history=history, memories=memories, vault_context=vault_context,
     )
 
     add_message("user", message, session_id=session_id)
@@ -60,6 +68,10 @@ async def process(message: str, session_id: str = "default") -> tuple[str, str, 
         asyncio.create_task(_extract_memories_background(full_history))
         asyncio.create_task(_extract_knowledge_background(full_history))
 
+    # Extract facts from conversation more frequently
+    if msg_count > 0 and msg_count % _FACT_EXTRACTION_INTERVAL == 0:
+        asyncio.create_task(_extract_facts_background(message, response, intent_result.intent.value))
+
     return response, intent_result.intent.value, actions, error
 
 
@@ -67,10 +79,14 @@ async def process_stream(message: str, session_id: str = "default") -> AsyncIter
     """Process message and stream response tokens via Server-Sent Events."""
     history = get_history(session_id=session_id)
 
-    # Run classification and memory retrieval in parallel
+    # Run classification, memory retrieval, and vault context in parallel
     intent_task = classify_intent(message, history=history)
     memories_task = retrieve_relevant_memories(message, k=5)
-    intent_result, memories = await asyncio.gather(intent_task, memories_task)
+    vault_context_task = get_context_for_query(message)
+
+    intent_result, memories, vault_context = await asyncio.gather(
+        intent_task, memories_task, vault_context_task
+    )
     logger.info("Intent: %s (confidence: %.2f)", intent_result.intent.value, intent_result.confidence)
 
     tool_context = None
@@ -88,7 +104,8 @@ async def process_stream(message: str, session_id: str = "default") -> AsyncIter
     # Stream response tokens
     full_response = []
     async for token in generate_response_stream(
-        message, intent_result, tool_context, history=history, memories=memories,
+        message, intent_result, tool_context,
+        history=history, memories=memories, vault_context=vault_context,
     ):
         full_response.append(token)
         yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
@@ -112,6 +129,10 @@ async def process_stream(message: str, session_id: str = "default") -> AsyncIter
         asyncio.create_task(_extract_memories_background(full_history))
         asyncio.create_task(_extract_knowledge_background(full_history))
 
+    # Extract facts from conversation more frequently
+    if msg_count > 0 and msg_count % _FACT_EXTRACTION_INTERVAL == 0:
+        asyncio.create_task(_extract_facts_background(message, response, intent_result.intent.value))
+
 
 async def _extract_memories_background(history: list[dict]) -> None:
     try:
@@ -130,3 +151,13 @@ async def _extract_knowledge_background(history: list[dict]) -> None:
             logger.info("Extracted %d knowledge notes from conversation", len(results))
     except Exception:
         logger.exception("Background knowledge extraction failed")
+
+
+async def _extract_facts_background(user_message: str, assistant_response: str, intent: str) -> None:
+    """Extract user facts from conversation for persistent context."""
+    try:
+        facts = await remember_from_conversation(user_message, assistant_response, intent)
+        if facts:
+            logger.info("Extracted %d user facts from conversation", len(facts))
+    except Exception:
+        logger.exception("Background fact extraction failed")

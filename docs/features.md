@@ -1,11 +1,11 @@
 # Funcionalidades
 
-## MVP (Fase 1)
+## MVP (Fase 1) - Concluido
 
-### Classificação Automática de Intenção
-Usuário envia texto livre → ATLAS classifica em uma das 7 intenções suportadas e extrai parâmetros. Usa GPT-4o-mini com prompt de classificação.
+### Classificacao Automatica de Intencao
+Usuario envia texto livre -> ATLAS classifica em uma das 16 intencoes suportadas e extrai parametros. Usa GPT-4o-mini com prompt de classificacao, com fallback para Groq (gratuito).
 
-**Intenções:** `save_note`, `create_event`, `query_calendar`, `delete_event`, `log_habit`, `search`, `briefing`, `chat`
+**Intencoes:** `save_note`, `create_event`, `query_calendar`, `delete_event`, `edit_event`, `log_habit`, `read_email`, `send_email`, `confirm_send_email`, `trash_email`, `search`, `briefing`, `shopping_add`, `shopping_list`, `shopping_complete`, `chat`
 
 ### Gestão de Notas (Obsidian)
 Criar e organizar notas automaticamente no vault Obsidian:
@@ -39,10 +39,10 @@ Registro via texto natural de dados de saúde e produtividade:
 Armazenamento: frontmatter YAML no daily note + arquivo em `habits/`
 
 ### Pesquisa Inteligente
-Busca combinando vault pessoal + web:
-- **Vault:** busca semântica via ChromaDB (embeddings)
-- **Web:** Tavily API (retorna texto contextualizado)
-- Resposta sintetizada, não links crus
+Busca combinando vault pessoal + web com fallbacks gratuitos:
+- **Vault:** busca semantica via ChromaDB (embeddings)
+- **Web:** Tavily API -> DuckDuckGo (fallback gratuito)
+- Resposta sintetizada, nao links crus
 
 ### Personalidade ATLAS
 Em todas as interações:
@@ -61,17 +61,77 @@ Interface de chat no celular Android:
 
 **Componentes:** MessageBubble, ActionCard, ChatInput, MicButton, TypingIndicator
 
-### Interação por Voz
-Endpoint `POST /voice` aceita áudio, transcreve via Whisper, processa como /chat e retorna resposta com áudio TTS em base64.
+### Interacao por Voz
+Endpoint `POST /voice` aceita audio, transcreve via Whisper, processa como /chat e retorna resposta com audio TTS.
+
+**Sistema de TTS Multi-tier:**
+- `text` — Sem audio (gratuito)
+- `audio` — Edge TTS (gratuito, voz pt-BR)
+- `audio_premium` — ElevenLabs -> OpenAI -> Edge TTS (cascata com fallback)
 
 ---
 
-## Fase 2 (Planejado)
+## Fase 1.5 - Concluido
 
-- **Áudio bidirecional aprimorado** — Melhorias no fluxo Whisper STT + OpenAI TTS
-- **App Android polido** — Dashboard com agenda/hábitos/métricas/chat
-- **Reconhecimento de padrões** — analisa dados acumulados e identifica tendências
-- **Notificações proativas** — push com personalidade ("Faz 3 dias que você não treina.")
+### Lista de Compras
+CRUD completo de lista de compras via linguagem natural e API REST:
+- "Adiciona leite e pao na lista de compras"
+- "O que tem na minha lista?"
+- "Comprei o leite"
+- Categorias (mercado, farmacia, etc.)
+- Persistencia em SQLite
+
+**Endpoints:** `GET/POST/PATCH/DELETE /shopping`
+
+### Integracao de Email (Gmail)
+Leitura, triagem automatica e envio de emails:
+- "Mostra meus emails nao lidos"
+- "Manda email pro Joao sobre a reuniao"
+- Confirmacao antes de enviar
+- Triagem automatica de spam/newsletters em background
+- "Limpa os emails de promocao"
+
+**Intents:** `read_email`, `send_email`, `confirm_send_email`, `trash_email`
+
+### Voice Capture
+Transcricao de voz para notas estruturadas no vault:
+- Estruturacao automatica via LLM (titulo, categoria, tags)
+- Extracao de action items
+- Auto-linking com notas relacionadas
+- Quick capture para notas rapidas
+
+**Endpoint:** `POST /vault/voice-capture`
+
+### Streaming de Resposta (SSE)
+Server-Sent Events para menor latencia percebida:
+- Tokens enviados conforme gerados
+- Fallback automatico para Groq se OpenAI falhar
+- Headers: `text/event-stream`, `no-cache`
+
+**Endpoint:** `POST /chat/stream`
+
+### Sistema de Fallbacks Gratuitos
+Resiliencia com alternativas sem custo:
+
+| Servico | Principal | Fallback (gratuito) |
+|---|---|---|
+| LLM | OpenAI GPT-4o-mini | Groq Llama 3.1 |
+| TTS | ElevenLabs | Edge TTS |
+| Busca Web | Tavily | DuckDuckGo |
+
+### Configuracao de Modo de Resposta
+Controle dinamico do modo de audio:
+- `GET /settings` — Ver modo atual
+- `PATCH /settings` — Alterar modo em runtime
+- Modos: `text`, `audio`, `audio_premium`
+
+---
+
+## Fase 2 (Em Desenvolvimento)
+
+- **App Android polido** — Dashboard com agenda/habitos/metricas/chat
+- **Reconhecimento de padroes** — analisa dados acumulados e identifica tendencias
+- **Notificacoes proativas** — push com personalidade ("Faz 3 dias que voce nao treina.")
 
 ## Fase 3 (Futuro)
 

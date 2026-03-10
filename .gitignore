@@ -10,3 +10,5 @@ token.json
 credentials.json
 node_modules/
 .expo/
+*.tar.gz
+.pytest_cache/

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -10,9 +11,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
+import { fetchSettings, updateSettings, ResponseMode } from '../api/atlas';
 import { fontSize, spacing } from '../theme';
+import { Haptic } from '../utils/haptics';
+
+const RESPONSE_MODES: { value: ResponseMode; label: string; description: string; icon: string }[] = [
+  { value: 'text', label: 'Apenas Texto', description: 'Sem áudio nas respostas', icon: 'text' },
+  { value: 'audio', label: 'Áudio (Gratuito)', description: 'Edge TTS - voz sintética', icon: 'volume-medium' },
+  { value: 'audio_premium', label: 'Áudio Premium', description: 'ElevenLabs - voz natural', icon: 'volume-high' },
+];
 
 export function SettingsScreen() {
   const { theme, colors, toggleTheme } = useTheme();
@@ -21,11 +31,49 @@ export function SettingsScreen() {
   const [keyDraft, setKeyDraft] = useState(apiKey);
   const [saved, setSaved] = useState(false);
 
+  // Response mode state
+  const [responseMode, setResponseMode] = useState<ResponseMode>('text');
+  const [loadingMode, setLoadingMode] = useState(true);
+  const [savingMode, setSavingMode] = useState(false);
+
+  // Fetch current response mode on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await fetchSettings();
+        setResponseMode(settings.response_mode);
+      } catch (e) {
+        console.error('Failed to fetch settings:', e);
+      } finally {
+        setLoadingMode(false);
+      }
+    };
+    loadSettings();
+  }, []);
+
   const handleSave = () => {
     setServerUrl(urlDraft.replace(/\/$/, ''));
     setApiKey(keyDraft);
     setSaved(true);
+    Haptic.success();
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleResponseModeChange = async (mode: ResponseMode) => {
+    if (mode === responseMode) return;
+
+    Haptic.selection();
+    setSavingMode(true);
+    try {
+      await updateSettings({ response_mode: mode });
+      setResponseMode(mode);
+      Haptic.success();
+    } catch (e) {
+      console.error('Failed to update response mode:', e);
+      Haptic.error();
+    } finally {
+      setSavingMode(false);
+    }
   };
 
   const styles = makeStyles(colors);
@@ -52,6 +100,52 @@ export function SettingsScreen() {
               thumbColor="#fff"
             />
           </View>
+        </View>
+
+        {/* Response Mode */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Modo de Resposta</Text>
+            {(loadingMode || savingMode) && (
+              <ActivityIndicator size="small" color={colors.accent} />
+            )}
+          </View>
+          <Text style={styles.sectionDescription}>
+            Escolha como o ATLAS responde às suas mensagens
+          </Text>
+          {RESPONSE_MODES.map((mode) => (
+            <Pressable
+              key={mode.value}
+              style={[
+                styles.modeOption,
+                responseMode === mode.value && styles.modeOptionSelected,
+              ]}
+              onPress={() => handleResponseModeChange(mode.value)}
+              disabled={loadingMode || savingMode}
+            >
+              <View style={styles.modeIconContainer}>
+                <Ionicons
+                  name={mode.icon as any}
+                  size={24}
+                  color={responseMode === mode.value ? colors.accent : colors.textSecondary}
+                />
+              </View>
+              <View style={styles.modeTextContainer}>
+                <Text
+                  style={[
+                    styles.modeLabel,
+                    responseMode === mode.value && { color: colors.accent },
+                  ]}
+                >
+                  {mode.label}
+                </Text>
+                <Text style={styles.modeDescription}>{mode.description}</Text>
+              </View>
+              {responseMode === mode.value && (
+                <Ionicons name="checkmark-circle" size={24} color={colors.accent} />
+              )}
+            </Pressable>
+          ))}
         </View>
 
         {/* Server */}
@@ -115,11 +209,21 @@ const makeStyles = (colors: any) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
     sectionTitle: {
       color: colors.text,
       fontSize: fontSize.lg,
       fontWeight: '600',
-      marginBottom: spacing.sm,
+      marginBottom: spacing.xs,
+    },
+    sectionDescription: {
+      color: colors.textSecondary,
+      fontSize: fontSize.sm,
+      marginBottom: spacing.md,
     },
     row: {
       flexDirection: 'row',
@@ -152,5 +256,37 @@ const makeStyles = (colors: any) =>
       color: '#FFFFFF',
       fontSize: fontSize.md,
       fontWeight: '600',
+    },
+    modeOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: spacing.md,
+      borderRadius: 8,
+      marginBottom: spacing.sm,
+      backgroundColor: colors.surfaceLight,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modeOptionSelected: {
+      borderColor: colors.accent,
+      backgroundColor: `${colors.accent}15`,
+    },
+    modeIconContainer: {
+      width: 40,
+      alignItems: 'center',
+    },
+    modeTextContainer: {
+      flex: 1,
+      marginLeft: spacing.sm,
+    },
+    modeLabel: {
+      color: colors.text,
+      fontSize: fontSize.md,
+      fontWeight: '600',
+    },
+    modeDescription: {
+      color: colors.textSecondary,
+      fontSize: fontSize.sm,
+      marginTop: 2,
     },
   });
