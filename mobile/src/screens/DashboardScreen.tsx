@@ -10,34 +10,154 @@ import {
   Text,
   View,
 } from 'react-native';
-import { colors, fontSize, spacing } from '../theme';
-import { dismissEmailAlerts } from '../api/atlas';
-import { useDashboard } from '../hooks/useDashboard';
+import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
+import { useDashboardContext } from '../context/DashboardContext';
+import { fontSize, spacing } from '../theme';
+import { InsightsWidget, AgendaWidget, HabitsWidget, WidgetCard } from '../components/dashboard';
+import { Insight } from '../types';
 
-function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+function VaultWidget() {
+  const { colors } = useTheme();
+  const { data } = useDashboardContext();
+  const vault = data?.vault;
+
+  if (!vault || vault.total_notes === 0) {
+    return (
+      <WidgetCard title="VAULT" icon="📝">
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Vault vazio</Text>
+      </WidgetCard>
+    );
+  }
+
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{icon}  {title}</Text>
-      {children}
-    </View>
+    <WidgetCard title="VAULT" icon="📝">
+      <View style={styles.statsRow}>
+        <View style={[styles.statCard, { backgroundColor: colors.surfaceLight }]}>
+          <Text style={[styles.statNumber, { color: colors.accent }]}>{vault.total_notes}</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Notas</Text>
+        </View>
+        <View style={[styles.statCard, { backgroundColor: colors.surfaceLight }]}>
+          <Text style={[styles.statNumber, { color: colors.accent }]}>{vault.notes_today}</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Hoje</Text>
+        </View>
+        <View style={[styles.statCard, { backgroundColor: colors.surfaceLight }]}>
+          <Text style={[styles.statNumber, { color: colors.accent }]}>{vault.orphan_notes}</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Órfãs</Text>
+        </View>
+      </View>
+      {vault.top_topics && vault.top_topics.length > 0 && (
+        <View style={styles.topicsRow}>
+          {vault.top_topics.slice(0, 5).map(([topic, count]) => (
+            <View key={topic} style={[styles.topicChip, { backgroundColor: colors.surfaceLight }]}>
+              <Text style={[styles.topicText, { color: colors.accent }]}>
+                {topic} ({count})
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </WidgetCard>
   );
 }
 
-function formatTime(isoString: string): string {
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return isoString;
+function EmailsWidget() {
+  const { colors } = useTheme();
+  const { data, dismissAllAlerts } = useDashboardContext();
+
+  const emails = data?.emails || [];
+  const alerts = data?.email_alerts || [];
+
+  return (
+    <>
+      {alerts.length > 0 && (
+        <WidgetCard title="ATENÇÃO" icon="🚨">
+          {alerts.map((alert, i) => (
+            <View key={i} style={styles.alertRow}>
+              <Text style={[styles.alertCategory, { color: colors.error }]}>{alert.category}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.alertSummary, { color: colors.text }]}>{alert.summary}</Text>
+                <Text style={[styles.alertFrom, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {alert.from}
+                </Text>
+              </View>
+            </View>
+          ))}
+          <Pressable
+            style={[styles.dismissButton, { borderColor: colors.border }]}
+            onPress={dismissAllAlerts}
+          >
+            <Text style={[styles.dismissText, { color: colors.textSecondary }]}>Dispensar alertas</Text>
+          </Pressable>
+        </WidgetCard>
+      )}
+
+      <WidgetCard title="EMAILS" icon="✉️">
+        {emails.length > 0 ? (
+          emails.map(email => (
+            <View key={email.id} style={[styles.emailRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.emailFrom, { color: colors.accent }]} numberOfLines={1}>
+                {email.from}
+              </Text>
+              <Text style={[styles.emailSubject, { color: colors.text }]} numberOfLines={1}>
+                {email.subject}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nenhum email não lido</Text>
+        )}
+      </WidgetCard>
+    </>
+  );
+}
+
+function MemoriesWidget() {
+  const { colors } = useTheme();
+  const { data } = useDashboardContext();
+  const memories = data?.memories || [];
+
+  if (memories.length === 0) {
+    return null;
   }
+
+  return (
+    <WidgetCard title="MEMÓRIAS" icon="🧠">
+      {memories.slice(0, 5).map((mem, i) => (
+        <View key={i} style={styles.memoryRow}>
+          <Text style={[styles.memoryCategory, { color: colors.accent, backgroundColor: colors.surfaceLight }]}>
+            {mem.category}
+          </Text>
+          <Text style={[styles.memoryContent, { color: colors.text }]} numberOfLines={2}>
+            {mem.content}
+          </Text>
+        </View>
+      ))}
+    </WidgetCard>
+  );
 }
 
 export function DashboardScreen() {
-  const { data, loading, error, refresh } = useDashboard();
+  const { colors } = useTheme();
+  const { data, loading, error, refresh, lastUpdated } = useDashboardContext();
+  const navigation = useNavigation<any>();
+
+  const handleAddEvent = () => {
+    // Navegar para o chat com mensagem pré-preenchida
+    navigation.navigate('Chat', { prefill: 'Marca ' });
+  };
+
+  const handleInsightAction = (insight: Insight, action: { intent: string; parameters: Record<string, unknown> }) => {
+    // Navegar para o chat para executar a ação
+    if (action.intent === 'log_habit') {
+      const habit = action.parameters.habit as string;
+      navigation.navigate('Chat', { prefill: `Registra ${habit}` });
+    }
+  };
 
   if (loading && !data) {
     return (
-      <View style={styles.centered}>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
@@ -45,18 +165,33 @@ export function DashboardScreen() {
 
   if (error && !data) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+        <Pressable style={[styles.retryButton, { backgroundColor: colors.accent }]} onPress={refresh}>
+          <Text style={[styles.retryText, { color: colors.text }]}>Tentar novamente</Text>
+        </Pressable>
       </View>
     );
   }
 
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return '';
+    return lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <Text style={styles.headerDate}>{data?.date}</Text>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Dashboard</Text>
+          <Text style={[styles.headerDate, { color: colors.textSecondary }]}>{data?.date}</Text>
+        </View>
+        {lastUpdated && (
+          <Text style={[styles.lastUpdated, { color: colors.textSecondary }]}>
+            Atualizado {formatLastUpdated()}
+          </Text>
+        )}
       </View>
       <ScrollView
         style={styles.scroll}
@@ -65,118 +200,23 @@ export function DashboardScreen() {
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.accent} />
         }
       >
-        {/* Important Email Alerts */}
-        {data?.email_alerts && data.email_alerts.length > 0 && (
-          <Section title="Atenção" icon="🚨">
-            {data.email_alerts.map((alert, i) => (
-              <View key={i} style={styles.alertRow}>
-                <Text style={styles.alertCategory}>{alert.category}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.alertSummary}>{alert.summary}</Text>
-                  <Text style={styles.alertFrom} numberOfLines={1}>{alert.from}</Text>
-                </View>
-              </View>
-            ))}
-            <Pressable
-              style={styles.dismissButton}
-              onPress={() => { dismissEmailAlerts().then(refresh); }}
-            >
-              <Text style={styles.dismissText}>Dispensar alertas</Text>
-            </Pressable>
-          </Section>
-        )}
+        {/* Insights proativos (novo!) */}
+        <InsightsWidget onAction={handleInsightAction} />
 
-        {/* Events */}
-        <Section title="Agenda de Hoje" icon="📅">
-          {data?.events && data.events.length > 0 ? (
-            data.events.map((event) => (
-              <View key={event.id} style={styles.row}>
-                <Text style={styles.rowTime}>{formatTime(event.start)}</Text>
-                <Text style={styles.rowText}>{event.summary}</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Nenhum evento hoje</Text>
-          )}
-        </Section>
+        {/* Agenda do dia */}
+        <AgendaWidget onAddEvent={handleAddEvent} />
 
-        {/* Habits */}
-        <Section title="Hábitos" icon="💪">
-          {data?.habits && data.habits.length > 0 ? (
-            data.habits.map((habit, i) => (
-              <View key={i} style={styles.row}>
-                <Text style={styles.rowLabel}>{habit.type}</Text>
-                <Text style={styles.rowValue}>
-                  {habit.value} {habit.unit}
-                </Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Nenhum hábito registrado hoje</Text>
-          )}
-        </Section>
+        {/* Hábitos com quick-log */}
+        <HabitsWidget />
 
-        {/* Vault */}
-        <Section title="Vault" icon="📝">
-          {data?.vault && data.vault.total_notes > 0 ? (
-            <>
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{data.vault.total_notes}</Text>
-                  <Text style={styles.statLabel}>Notas</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{data.vault.notes_today}</Text>
-                  <Text style={styles.statLabel}>Hoje</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Text style={styles.statNumber}>{data.vault.total_links}</Text>
-                  <Text style={styles.statLabel}>Links</Text>
-                </View>
-              </View>
-              {data.vault.top_topics && data.vault.top_topics.length > 0 && (
-                <View style={styles.topicsRow}>
-                  {data.vault.top_topics.slice(0, 5).map(([topic, count]) => (
-                    <View key={topic} style={styles.topicChip}>
-                      <Text style={styles.topicText}>{topic} ({count})</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </>
-          ) : (
-            <Text style={styles.emptyText}>Vault vazio</Text>
-          )}
-        </Section>
+        {/* Emails e alertas */}
+        <EmailsWidget />
 
-        {/* Emails */}
-        <Section title="Emails Não Lidos" icon="✉️">
-          {data?.emails && data.emails.length > 0 ? (
-            data.emails.map((email) => (
-              <View key={email.id} style={styles.emailRow}>
-                <Text style={styles.emailFrom} numberOfLines={1}>{email.from}</Text>
-                <Text style={styles.emailSubject} numberOfLines={1}>{email.subject}</Text>
-                <Text style={styles.emailSnippet} numberOfLines={2}>{email.snippet}</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Nenhum email não lido</Text>
-          )}
-        </Section>
+        {/* Vault stats */}
+        <VaultWidget />
 
-        {/* Memories */}
-        <Section title="Memórias" icon="🧠">
-          {data?.memories && data.memories.length > 0 ? (
-            data.memories.map((mem, i) => (
-              <View key={i} style={styles.memoryRow}>
-                <Text style={styles.memoryCategory}>{mem.category}</Text>
-                <Text style={styles.memoryContent} numberOfLines={2}>{mem.content}</Text>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Nenhuma memória ainda</Text>
-          )}
-        </Section>
+        {/* Memórias */}
+        <MemoriesWidget />
       </ScrollView>
     </View>
   );
@@ -185,30 +225,31 @@ export function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   centered: {
     flex: 1,
-    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
     paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 32) + spacing.sm : spacing.sm,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   headerTitle: {
-    color: colors.text,
     fontSize: fontSize.xxl,
     fontWeight: '700',
   },
   headerDate: {
-    color: colors.textSecondary,
     fontSize: fontSize.sm,
     marginTop: 2,
+  },
+  lastUpdated: {
+    fontSize: fontSize.xs,
   },
   scroll: {
     flex: 1,
@@ -217,55 +258,24 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  section: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    gap: spacing.sm,
-  },
-  rowTime: {
-    color: colors.accent,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    minWidth: 50,
-  },
-  rowText: {
-    color: colors.text,
-    fontSize: fontSize.md,
-    flex: 1,
-  },
-  rowLabel: {
-    color: colors.textSecondary,
-    fontSize: fontSize.md,
-    flex: 1,
-  },
-  rowValue: {
-    color: colors.text,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-  },
   emptyText: {
-    color: colors.textSecondary,
     fontSize: fontSize.sm,
     fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
   },
   errorText: {
-    color: colors.error,
     fontSize: fontSize.md,
+    marginBottom: spacing.md,
+  },
+  retryButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+  },
+  retryText: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
   },
   statsRow: {
     flexDirection: 'row',
@@ -274,18 +284,15 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.surfaceLight,
     borderRadius: 8,
     padding: spacing.sm,
     alignItems: 'center',
   },
   statNumber: {
-    color: colors.accent,
     fontSize: fontSize.xl,
     fontWeight: '700',
   },
   statLabel: {
-    color: colors.textSecondary,
     fontSize: fontSize.sm,
     marginTop: 2,
   },
@@ -295,13 +302,11 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   topicChip: {
-    backgroundColor: colors.surfaceLight,
     borderRadius: 12,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
   topicText: {
-    color: colors.accent,
     fontSize: fontSize.sm,
   },
   alertRow: {
@@ -311,7 +316,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   alertCategory: {
-    color: '#FF6B6B',
     fontSize: fontSize.sm,
     fontWeight: '600',
     backgroundColor: 'rgba(255,107,107,0.15)',
@@ -323,12 +327,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   alertSummary: {
-    color: colors.text,
     fontSize: fontSize.sm,
     fontWeight: '600',
   },
   alertFrom: {
-    color: colors.textSecondary,
     fontSize: fontSize.sm,
     marginTop: 2,
   },
@@ -338,30 +340,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   dismissText: {
-    color: colors.textSecondary,
     fontSize: fontSize.sm,
   },
   emailRow: {
     paddingVertical: spacing.xs,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   emailFrom: {
-    color: colors.accent,
     fontSize: fontSize.sm,
     fontWeight: '600',
   },
   emailSubject: {
-    color: colors.text,
     fontSize: fontSize.md,
-    marginTop: 2,
-  },
-  emailSnippet: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
     marginTop: 2,
   },
   memoryRow: {
@@ -371,10 +363,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   memoryCategory: {
-    color: colors.accent,
     fontSize: fontSize.sm,
     fontWeight: '600',
-    backgroundColor: colors.surfaceLight,
     borderRadius: 8,
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
@@ -383,7 +373,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   memoryContent: {
-    color: colors.text,
     fontSize: fontSize.sm,
     flex: 1,
   },

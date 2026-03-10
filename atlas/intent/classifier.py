@@ -33,6 +33,10 @@ Intenções possíveis:
 - "shopping_add": usuário quer adicionar item à lista de compras (preciso comprar, adiciona na lista, falta...). Params: {{"items": ["item1", "item2"], "category": "mercado|farmácia|limpeza|geral"}}
 - "shopping_list": usuário quer ver/listar itens da lista de compras. Params: {{}}
 - "shopping_complete": usuário comprou/marcou item como comprado. Params: {{"item": "...", "item_id": number}}
+- "search_vault": usuário quer buscar nas suas notas/vault/anotações. Params: {{"query": "..."}}
+- "daily_summary": usuário quer um resumo/briefing do dia, como está o dia, resumo da agenda. Params: {{"date": "YYYY-MM-DD opcional"}}
+- "voice_capture": usuário falou algo que quer salvar como nota (geralmente vindo de transcrição de voz). Params: {{"transcription": "...", "quick": true|false}}
+- "find_connections": usuário quer ver conexões entre notas, backlinks, ou notas órfãs. Params: {{"note_path": "...", "action": "suggest|backlinks|orphans"}}
 - "chat": conversa casual, sem ação específica. Params: {{}}
 
 IMPORTANTE: Use o histórico da conversa para resolver referências ambíguas. Se o usuário diz \

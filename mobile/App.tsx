@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
+import { DashboardProvider } from './src/context/DashboardContext';
 import { configureApi } from './src/api/atlas';
 
 function AppInner() {
@@ -38,7 +39,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <SettingsProvider>
-          <AppInner />
+          <DashboardProvider>
+            <AppInner />
+          </DashboardProvider>
         </SettingsProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

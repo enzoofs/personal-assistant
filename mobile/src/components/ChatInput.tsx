@@ -28,9 +28,9 @@ export function ChatInput({ onSend, disabled }: Props) {
         onChangeText={setText}
         placeholder="Digite uma mensagem..."
         placeholderTextColor={colors.textSecondary}
-        onSubmitEditing={handleSend}
         editable={!disabled}
-        returnKeyType="send"
+        multiline
+        maxHeight={120}
       />
       <Pressable
         style={[styles.sendButton, (!text.trim() || disabled) && styles.sendDisabled]}
@@ -46,7 +46,7 @@ export function ChatInput({ onSend, disabled }: Props) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
@@ -61,6 +61,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: 40,
+    textAlignVertical: 'center',
   },
   sendButton: {
     width: 40,

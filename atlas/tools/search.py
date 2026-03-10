@@ -11,24 +11,44 @@ logger = logging.getLogger(__name__)
 
 
 def _web_search(query: str, max_results: int = 5) -> list[dict]:
-    """Search the web using Tavily API."""
-    if not settings.tavily_api_key or settings.tavily_api_key == "tvly-test":
-        logger.warning("Tavily API key not configured, skipping web search")
-        return []
+    """Search the web using Tavily API with DuckDuckGo fallback."""
+    # Try Tavily first if configured
+    if settings.tavily_api_key and settings.tavily_api_key != "tvly-test":
+        try:
+            client = TavilyClient(api_key=settings.tavily_api_key)
+            response = client.search(query, max_results=max_results)
+            return [
+                {
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "snippet": r.get("content", "")[:300],
+                }
+                for r in response.get("results", [])
+            ]
+        except Exception as e:
+            logger.warning("Tavily search failed, trying DuckDuckGo: %s", e)
 
+    # Fallback to DuckDuckGo (free)
+    return _duckduckgo_search(query, max_results)
+
+
+def _duckduckgo_search(query: str, max_results: int = 5) -> list[dict]:
+    """Search using DuckDuckGo (free, no API key required)."""
     try:
-        client = TavilyClient(api_key=settings.tavily_api_key)
-        response = client.search(query, max_results=max_results)
-        return [
-            {
-                "title": r.get("title", ""),
-                "url": r.get("url", ""),
-                "snippet": r.get("content", "")[:300],
-            }
-            for r in response.get("results", [])
-        ]
+        from duckduckgo_search import DDGS
+
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
+            return [
+                {
+                    "title": r.get("title", ""),
+                    "url": r.get("href", ""),
+                    "snippet": r.get("body", "")[:300],
+                }
+                for r in results
+            ]
     except Exception:
-        logger.exception("Tavily search failed")
+        logger.exception("DuckDuckGo search failed")
         return []
 
 

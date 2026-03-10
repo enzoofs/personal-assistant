@@ -157,10 +157,38 @@ def get_all_memories() -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def get_memories_by_category(category: str) -> list[dict]:
+def get_memories_by_category(category: str, limit: int = 100) -> list[dict]:
     conn = _get_conn()
-    rows = conn.execute("SELECT * FROM memories WHERE category = ? ORDER BY confidence DESC", (category,)).fetchall()
+    rows = conn.execute(
+        "SELECT * FROM memories WHERE category = ? ORDER BY confidence DESC LIMIT ?",
+        (category, limit),
+    ).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_recent_memories(limit: int = 20) -> list[dict]:
+    """Get most recently accessed memories."""
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT * FROM memories ORDER BY last_accessed DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_memories_since(since: datetime) -> list[dict]:
+    """Get memories created since a given datetime."""
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT * FROM memories WHERE created_at >= ? ORDER BY created_at DESC",
+        (since.isoformat(),),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_memory(content: str, category: str = "fact", confidence: float = 0.8) -> int:
+    """Alias for save_memory for convenience."""
+    return save_memory(content, category, confidence)
 
 
 def touch_memory(memory_id: int) -> None:

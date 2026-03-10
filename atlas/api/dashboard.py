@@ -14,6 +14,7 @@ from atlas.services.gmail import list_emails
 from atlas.services.google_calendar import list_events
 from atlas.vault.manager import get_daily_note_path, list_notes, read_note
 from atlas.proactive.email_cleaner import get_email_alerts
+from atlas.proactive.insights import generate_insights
 from atlas.vault.stats import get_vault_stats
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ async def get_dashboard_data() -> dict:
         "recent_messages": [],
         "emails": [],
         "memories": [],
+        "insights": [],
     }
 
     # 1. Calendar events - async call with error handling
@@ -144,5 +146,13 @@ async def get_dashboard_data() -> dict:
     except Exception as e:
         logger.exception("Database error fetching memories")
         dashboard_data["memories"] = []
+
+    # 8. Proactive insights (Phase 2)
+    try:
+        dashboard_data["insights"] = await generate_insights()
+        logger.info("Generated %d insights", len(dashboard_data["insights"]))
+    except Exception as e:
+        logger.exception("Error generating insights")
+        dashboard_data["insights"] = []
 
     return dashboard_data
